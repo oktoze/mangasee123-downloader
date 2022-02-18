@@ -1,0 +1,91 @@
+* Mangasee123.com Downloader
+/Please note that I don't encourage downloading copyrighted content. You must support your favorite artists by purchasing their work if you're able to./
+
+** What's Mangasee123?
+It's a manga archive website with a collection of more than 6600 mangas. You could visit it [[https://mangasee123.com/][here]].
+
+** Usage
+#+BEGIN_SRC shell
+python MangaseeDL.py MANGA_NAME [CHAPTER_START [CHAPTER_END]]
+#+END_SRC
+
+Examples:
+
+If nothing other than ~MANGA_NAME~ is provided, the script tries to download all chapters.
+#+BEGIN_SRC
+python MangaseeDL.py "One Piece"
+python MangaseeDL.py "one piece"
+python MangaseeDL.py one-piece
+#+END_SRC
+Note that ~MANGA_NAME~ is case-insensitive, and spaces could be replaced with hyphens.
+
+If only ~CHAPTER_START~ is provided, that chapter is downloaded. The following commands will all download chapter 10 of the manga One Piece:
+
+#+BEGIN_SRC shell
+python MangaseeDL.py "One Piece" 10
+python MangaseeDL.py one-piece 10
+python MangaseeDL.py One-Piece 10
+#+END_SRC
+
+If ~CHAPTER_START~ and ~CHAPTER_END~ are both provided, the script tries to download CHAPTER_START to CHAPTER_END. The following commands will all download chapters 10 through 20 of the manga Diamond is Unbreakable:
+#+BEGIN_SRC shell
+python MangaseeDL.py "Daomond is Unbreakable" 10 20
+python MangaseeDL.py "diamond is unbreakable" 10 20
+python MangaseeDL.py diamond-is-unbreakable 10 20
+#+END_SRC
+
+*** Notes:
+- You can find the manga name through searching on mangasee123.com and finding out the index name. For example, if you search for /JoJo's Bizarre Adventure - Part 4 - Diamond Is Unbreakable/, you'll end up here: ~https://mangasee123.com/manga/Diamond-Is-Unbreakable~. So the name you should enter is ~Diamond-Is-Unbreakable~ (case-insensitive).
+
+
+** How does it work?
+As of the time of writing this script, mangasee123 serves mangas in the following format:
+
+https://mangasee123.com/read-online/MANGANAME-chapter-CHAPTERNO-page-PAGENO.html
+
+Take One Piece for example. If you want to read the panel where Ace dies (Oops! Sorry!), you'll go to:
+
+https://mangasee123.com/read-online/One-Piece-chapter-574-page-21.html
+
+If we inspect this url's source, there's two important variables in the JS codes:
+
+~vm.CHAPTERS~: An array holding the information for each chapter and the number of its pages.
+
+Example:
+#+BEGIN_SRC JavaScript
+vm.CHAPTERS = [
+  {
+    "Chapter":"100010",
+    "Page":"57",
+    ...
+  },
+  {
+    "Chapter":"100020",
+    "Page":"24",
+    ...
+  },
+  ...;
+#+END_SRC
+
+Note how the chapter has a leading 1 and a tailing zero. We strip that off.
+
+~vm.CurPathName~: A url in which the images for that chapter is hosted.
+
+Example:
+#+BEGIN_SRC JavaScript
+vm.CurPathName = "official-ongoing-2.gamindustri.us";
+#+end_src
+
+so images for pages of this chapter are hosted on scans-hot.leanbox.us!
+
+By checking the url for each page image, we can see it's in the following format:
+
+~https://HOST/manga/MANGANAME/CHAPTER-PAGE.png~
+
+With CHAPTER and PAGE being 4 3 characters long, respectively.
+
+So the aforementioned One Piece is hosted on:
+
+~https://official-ongoing-2.gamindustri.us/manga/One-Piece/0574-021.png~
+
+That's practically it. You can see how this script is able to download mangas.
