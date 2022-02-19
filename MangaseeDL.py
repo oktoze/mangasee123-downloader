@@ -114,7 +114,7 @@ async def download_and_save_chapter(session: aiohttp.ClientSession, name, chapte
     Asynchronously download and save a page (skip if file exists)
     """
     try:
-        print(f"Started downloading chpater {chapter}...")
+        print(f"Started downloading chapter {chapter}...")
         data = await get_chapter_download_and_save_data(session, name, chapter, pages)
 
         for d in data:
@@ -128,7 +128,7 @@ async def download_and_save_chapter(session: aiohttp.ClientSession, name, chapte
 
             async with aiofiles.open(save_path, "wb") as f:
                 await f.write(await resp.read())
-        print(f"Finished downloading chpater {chapter}...")
+        print(f"Finished downloading chapter {chapter}...")
     except asyncio.TimeoutError:
         print(f"Timeout in downloading chapter {chapter}!")
 
