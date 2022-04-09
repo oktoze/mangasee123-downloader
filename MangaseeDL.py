@@ -1,4 +1,5 @@
 import asyncio
+import argparse
 import json
 import os
 import re
@@ -109,7 +110,9 @@ async def get_chapter_download_and_save_data(
     return data
 
 
-async def download_and_save_chapter(session: aiohttp.ClientSession, name, chapter, pages):
+async def download_and_save_chapter(
+    session: aiohttp.ClientSession, name, chapter, pages
+):
     """
     Asynchronously download and save a page (skip if file exists)
     """
@@ -184,7 +187,17 @@ if __name__ == "__main__":
             Example: $ python downloader.py Diamond-Is-Unbreakable 10 20
             will download chapter 10 through 20
     """
-    if len(sys.argv) == 1:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("manga_name")
+    parser.add_argument("chapter_start", nargs="?", type=int)
+    parser.add_argument("chapter_end", nargs="?", type=int)
+    parser.add_argument(
+        "-l", "--limit", help="Limit maximum simultaneous chapter downloads", type=int
+    )
+
+    try:
+        args = parser.parse_args()
+    except SystemExit:
         print(help)
         sys.exit()
 
@@ -207,14 +220,14 @@ if __name__ == "__main__":
     )
 
     try:
-        if len(sys.argv) == 2:
+        if not args.chapter_start:
             target_chapters = chapters_dict.values()
-        elif len(sys.argv) == 3:
-            ch = int(sys.argv[2])
+        elif args.chapter_start and not args.chapter_end:
+            ch = args.chapter_start
             target_chapters = [chapters_dict[ch]]
-        elif len(sys.argv) == 4:
-            ch_start = int(sys.argv[2])
-            ch_end = int(sys.argv[3])
+        else:
+            ch_start = args.chapter_start
+            ch_end = args.chapter_end
 
             target_chapters = []
             for ch in range(ch_start, ch_end + 1):
@@ -223,9 +236,7 @@ if __name__ == "__main__":
                     print(f"Chapter {ch} is not available, skipping...")
                 else:
                     target_chapters.append(chapter)
-        else:
-            print(help)
-            sys.exit()
+
     except ValueError:
         print("Could not parse input!")
         print(help)
@@ -237,7 +248,10 @@ if __name__ == "__main__":
         sys.exit()
 
     try:
-        asyncio.run(download_chapters(name, target_chapters))
+        limit = args.limit or len(target_chapters)
+
+        for i in range(0, len(target_chapters), limit):
+            asyncio.run(download_chapters(name, target_chapters[i : i + limit]))
     except FileExistsError:
         print(
             f"Could not create directory {name}, It appears that a file with that name exists!"
