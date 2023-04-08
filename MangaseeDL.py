@@ -9,7 +9,7 @@ import os
 import pprint
 import re
 import sys
-from typing import Iterable
+import typing
 
 import aiofiles
 import aiohttp
@@ -24,7 +24,7 @@ USERAGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:101.0) Gecko/20100
 logging.basicConfig()
 LOGGER = logging.getLogger()
 
-def add_verbosity():
+def add_verbosity() -> None:
     """
     Turn on quite a bit of verbose logging to figure out why downloads are
     failing. You don't want this normally
@@ -52,17 +52,17 @@ def remove_leading_zeros(num: str) -> str:
     return num[first_non_zero_index:]
 
 
-def add_leading_zeros(num: str, total_len: int) -> str:
+def add_leading_zeros(num: int, total_len: int) -> str:
     """
     Add leading zeros to a string to reach the specified length.
     """
-    num = str(num)
-    needed_zeros = total_len - len(num)
+    inum = str(num)
+    needed_zeros = total_len - len(inum)
 
     if needed_zeros > 0:
-        return "0" * needed_zeros + num
+        return "0" * needed_zeros + inum
 
-    return num
+    return inum
 
 
 def get_chapter_first_page_url(manga_name: str, chapter: str, page: str):
@@ -76,7 +76,7 @@ def get_chapter_first_page_url(manga_name: str, chapter: str, page: str):
     )
 
 
-def get_referer_for_name(manga_name: str):
+def get_referer_for_name(manga_name: str) -> str:
     """
     Get mangasee123 page that would link to the chapter first_page_url
     """
@@ -85,17 +85,17 @@ def get_referer_for_name(manga_name: str):
     )
 
 
-def get_page_image_url(host, name, chapter, page):
+def get_page_image_url(host: str, name: str, chapter: int, page: int) -> str:
     """
     Get hosted image url for a specific manga page
     """
 
-    chapter = add_leading_zeros(chapter, 4)
-    page = add_leading_zeros(page, 3)
-    return f"https://{host}/manga/{name}/{chapter}-{page}.png"
+    ichapter = add_leading_zeros(chapter, 4)
+    ipage = add_leading_zeros(page, 3)
+    return f"https://{host}/manga/{name}/{ichapter}-{ipage}.png"
 
 
-def get_manga_details(name):
+def get_manga_details(name: str) -> dict[int, typing.Any]:
     """
     Get details for a manga from Mangasee123.
     Details include available chapters and number of pages in each chapter
@@ -109,7 +109,13 @@ def get_manga_details(name):
     content = resp.content.decode("utf-8")
 
     chapter_details_pattern = re.compile("vm.CHAPTERS = (.*);")
-    chapter_details_str = chapter_details_pattern.search(content).groups()[0]
+    chapter_details_search = chapter_details_pattern.search(content)
+    if chapter_details_search:
+        chapter_details_str = chapter_details_search.groups()[0]
+    else:
+        # Not sure what to do here, fixme later
+        raise Exception("ohno")
+
     chapter_details_list = json.loads(chapter_details_str)
     logging.getLogger().debug("First page chapter details: %s",
                               pprint.pformat(chapter_details_list))
@@ -131,15 +137,25 @@ async def get_chapter_download_and_save_data(
     """
     data = []
 
-    url = get_chapter_first_page_url(name, chapter, 1)
+    LOGGER.debug("get_chapter_download_and_save_data(%s, %i, %i)", name,
+                 chapter, pages)
+
+    url = get_chapter_first_page_url(name, str(chapter), "1")
 
     resp = await session.request(method="GET", url=url)
     content = await resp.text()
+    LOGGER.debug("content in get_chapter_download_and_save_data: %s",
+                 content)
     host_pattern = re.compile('vm.CurPathName = "(.*)";')
-    host = host_pattern.search(content).groups()[0]
+    host_search = host_pattern.search(content)
+    if host_search:
+        host = host_search.groups()[0]
+    else:
+        # I don't know what to do here right now, put in a generic
+        # exception
+        raise Exception("ohno")
 
     for page in range(1, int(pages) + 1):
-        page = add_leading_zeros(page, 3)
         download_url = get_page_image_url(host, name, chapter, page)
         save_path = os.path.join(str(name), str(chapter), f"{page}.png")
 
@@ -149,8 +165,8 @@ async def get_chapter_download_and_save_data(
 
 
 async def download_and_save_chapter(
-    session: aiohttp.ClientSession, name, chapter, pages
-):
+    session: aiohttp.ClientSession, name: str, chapter: int, pages: int
+) -> None:
     """
     Asynchronously download and save a page (skip if file exists)
     """
@@ -174,7 +190,7 @@ async def download_and_save_chapter(
         print(f"Timeout in downloading chapter {chapter}!")
 
 
-async def download_chapters(name: str, chapter_details: Iterable):
+async def download_chapters(name: str, chapter_details: typing.Iterable) -> None:
     """
     Main couroutine for downloading chapters
     """
@@ -264,7 +280,7 @@ if __name__ == "__main__":
 
     try:
         if not args.chapter_start:
-            target_chapters = chapters_dict.values()
+            target_chapters = list(chapters_dict.values())
         elif args.chapter_start and not args.chapter_end:
             ch = args.chapter_start
             target_chapters = [chapters_dict[ch]]

@@ -1,3 +1,7 @@
 aiofiles
 aiohttp
+mypy
 requests
+
+types-aiofiles
+types-requests
