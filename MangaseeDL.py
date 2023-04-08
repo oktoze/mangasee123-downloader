@@ -244,7 +244,7 @@ if __name__ == "__main__":
     if args.verbose:
         add_verbosity()
 
-    name = "-".join(sys.argv[1].title().split())
+    name = "-".join(args.manga_name.title().split())
 
     try:
         chapters_dict = get_manga_details(name)
