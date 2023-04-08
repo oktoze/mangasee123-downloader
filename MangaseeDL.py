@@ -17,6 +17,10 @@ import requests
 
 MANGASEE123HOST = "https://mangasee123.com"
 
+# Cloudflare seemingly blocks connections with the requests UA. :shrug:
+# You can probably set it to anything reasonable
+USERAGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:101.0) Gecko/20100101 Firefox/101.0"
+
 logging.basicConfig()
 LOGGER = logging.getLogger()
 
@@ -72,6 +76,15 @@ def get_chapter_first_page_url(manga_name: str, chapter: str, page: str):
     )
 
 
+def get_referer_for_name(manga_name: str):
+    """
+    Get mangasee123 page that would link to the chapter first_page_url
+    """
+    return (
+        f"{MANGASEE123HOST}/manga/{manga_name}"
+    )
+
+
 def get_page_image_url(host, name, chapter, page):
     """
     Get hosted image url for a specific manga page
@@ -88,8 +101,11 @@ def get_manga_details(name):
     Details include available chapters and number of pages in each chapter
     """
     url = get_chapter_first_page_url(name, "1", "1")
+    referer = get_referer_for_name(name)
 
-    resp = requests.get(url)
+    resp = requests.get(url, timeout=30, headers={
+        'referer': referer, 'User-Agent': USERAGENT}
+                        )
     content = resp.content.decode("utf-8")
 
     chapter_details_pattern = re.compile("vm.CHAPTERS = (.*);")
