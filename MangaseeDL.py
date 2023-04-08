@@ -41,35 +41,23 @@ def remove_leading_zeros(num: str) -> str:
     """
     Remove leading zeros from a string.
     """
-    num = str(num)
-    first_non_zero_index = 0
-
-    for i, c in enumerate(num):
-        if c != "0":
-            first_non_zero_index = i
-            break
-
-    return num[first_non_zero_index:]
+    inum = int(num, base=10)
+    return str(inum)
 
 
 def add_leading_zeros(num: int, total_len: int) -> str:
     """
     Add leading zeros to a string to reach the specified length.
     """
-    inum = str(num)
-    needed_zeros = total_len - len(inum)
-
-    if needed_zeros > 0:
-        return "0" * needed_zeros + inum
-
-    return inum
+    snum = str(num)
+    return snum.zfill(total_len - len(snum))
 
 
 def get_chapter_first_page_url(manga_name: str, chapter: str, page: str):
     """
     Get mangasee123 reader url for a specific manga/chapter/page
 
-    Boch chapter and page should be without leading zeros
+    Both chapter and page should be without leading zeros
     """
     return (
         f"{MANGASEE123HOST}/read-online/{manga_name}-chapter-{chapter}-page-{page}.html"
@@ -113,8 +101,9 @@ def get_manga_details(name: str) -> dict[int, typing.Any]:
     if chapter_details_search:
         chapter_details_str = chapter_details_search.groups()[0]
     else:
-        # Not sure what to do here, fixme later
-        raise Exception("ohno")
+        LOGGER.warning("No match for vm.CHAPTERS found")
+        LOGGER.debug("Contents: %s", content)
+        raise SystemExit("no match for vm.CHAPTERS found, bailing")
 
     chapter_details_list = json.loads(chapter_details_str)
     logging.getLogger().debug("First page chapter details: %s",
@@ -151,9 +140,9 @@ async def get_chapter_download_and_save_data(
     if host_search:
         host = host_search.groups()[0]
     else:
-        # I don't know what to do here right now, put in a generic
-        # exception
-        raise Exception("ohno")
+        LOGGER.warning("No match for vm.CurPathName found")
+        LOGGER.debug("Contents: %s", content)
+        raise SystemExit("no match for vm.CurPathName found, bailing")
 
     for page in range(1, int(pages) + 1):
         download_url = get_page_image_url(host, name, chapter, page)
@@ -205,40 +194,40 @@ async def download_chapters(name: str, chapter_details: typing.Iterable) -> None
 
         coroutines = []
         for ch_detail in chapter_details:
-            chapter = ch_detail["Chapter"][1:-1]
+            chapt = ch_detail["Chapter"][1:-1]
             pages = int(ch_detail["Page"])
 
-            if not os.path.isdir(os.path.join(name, chapter)):
-                os.mkdir(os.path.join(name, chapter))
+            if not os.path.isdir(os.path.join(name, chapt)):
+                os.mkdir(os.path.join(name, chapt))
 
             coroutines.append(
-                download_and_save_chapter(session, name, chapter, pages),
+                download_and_save_chapter(session, name, chapt, pages),
             )
 
-        print(f"Downloading requested chapters...")
+        print("Downloading requested chapters...")
         await asyncio.gather(*coroutines)
         print("Download completed!")
 
 
 if __name__ == "__main__":
-    help = """
-    Usage: python mangasee123-downloader.py MANGA_NAME [CHAPTER_START [CHAPTER_END]]
+    helptext = f"""
+    Usage: python3 {sys.argv[0]} MANGA_NAME [CHAPTER_START [CHAPTER_END]]
 
-    Download mangas from https://mangasee123.com/
+    Download mangas from {MANGASEE123HOST}
 
-    Note: MANGA_NAME is case insensitives. If it contains spaces, you can place hyphen ("-") instead of spaces or just put the name into quoutations.
-    Note: Downloaded images will be placed into {working directory}/{manga name}/{chapter number}/{page number}
+    Note: MANGA_NAME is case insensitive. If it contains spaces, you can place hyphen ("-") instead of spaces or just put the name into quotations.
+    Note: Downloaded images will be placed into (working directory)/(manga name)/(chapter number)/(page number)
 
     Options:
         If nothing other than MANGA_NAME is provided, the script tries to download all chapters.
-            Example: python downloader.py Vagabond
+            Example: python3 {sys.argv[0]} Vagabond
 
         If only CHAPTER_START is provided, only that chapter is downloaded.
-            Example: $ python downloader.py one-piece 10
+            Example: $ python3 {sys.argv[0]} one-piece 10
             will download chapter 10
 
         If CHAPTER_START and CHAPTER_END are both provided, the script tries to download CHAPTER_START to CHAPTER_END
-            Example: $ python downloader.py Diamond-Is-Unbreakable 10 20
+            Example: $ python3 {sys.argv[0]} Diamond-Is-Unbreakable 10 20
             will download chapter 10 through 20
     """
     parser = argparse.ArgumentParser()
@@ -254,22 +243,22 @@ if __name__ == "__main__":
     try:
         args = parser.parse_args()
     except SystemExit:
-        print(help)
+        print(helptext)
         sys.exit()
 
     if args.verbose:
         add_verbosity()
 
-    name = "-".join(args.manga_name.title().split())
+    MANGA_NAME = "-".join(args.manga_name.title().split())
 
     try:
-        chapters_dict = get_manga_details(name)
-        print(f"Fetched details for {name}...")
+        chapters_dict = get_manga_details(MANGA_NAME)
+        print(f"Fetched details for {MANGA_NAME}...")
     except AttributeError:
-        print(f"Could not get info for {name} from http://mangasee123.com")
+        print(f"Could not get info for {MANGA_NAME} from {MANGASEE123HOST}")
         sys.exit()
     except requests.exceptions.ConnectionError:
-        print(f"Could not connect to http://mangasee123.com")
+        print(f"Could not connect to {MANGASEE123HOST}")
         sys.exit()
 
     min_chapter = min(chapters_dict.keys())
@@ -290,11 +279,11 @@ if __name__ == "__main__":
 
             target_chapters = []
             for ch in range(ch_start, ch_end + 1):
-                chapter = chapters_dict.get(ch)
-                if not chapter:
+                target_chapter = chapters_dict.get(ch)
+                if not target_chapter:
                     print(f"Chapter {ch} is not available, skipping...")
                 else:
-                    target_chapters.append(chapter)
+                    target_chapters.append(target_chapter)
 
     except ValueError:
         print("Could not parse input!")
@@ -310,9 +299,9 @@ if __name__ == "__main__":
         limit = args.limit or len(target_chapters)
 
         for i in range(0, len(target_chapters), limit):
-            asyncio.run(download_chapters(name, target_chapters[i : i + limit]))
+            asyncio.run(download_chapters(MANGA_NAME, target_chapters[i : i + limit]))
     except FileExistsError:
         print(
-            f"Could not create directory {name}, It appears that a file with that name exists!"
+            f"Could not create directory {MANGA_NAME}, directory already exists!"
         )
         sys.exit()
