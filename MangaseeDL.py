@@ -50,7 +50,7 @@ def add_leading_zeros(num: int, total_len: int) -> str:
     Add leading zeros to a string to reach the specified length.
     """
     snum = str(num)
-    return snum.zfill(total_len - len(snum))
+    return snum.zfill(total_len)
 
 
 def get_chapter_first_page_url(manga_name: str, chapter: str, page: str):
