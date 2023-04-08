@@ -287,7 +287,7 @@ if __name__ == "__main__":
 
     except ValueError:
         print("Could not parse input!")
-        print(help)
+        print(helptext)
         sys.exit()
     except KeyError:
         print("Could not find specified chapter(s)!")
