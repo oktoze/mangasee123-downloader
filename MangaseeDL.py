@@ -1,7 +1,12 @@
+#!/usr/bin/env python3
+
 import asyncio
 import argparse
+from http.client import HTTPConnection
 import json
+import logging
 import os
+import pprint
 import re
 import sys
 from typing import Iterable
@@ -11,6 +16,21 @@ import aiohttp
 import requests
 
 MANGASEE123HOST = "https://mangasee123.com"
+
+logging.basicConfig()
+LOGGER = logging.getLogger()
+
+def add_verbosity():
+    """
+    Turn on quite a bit of verbose logging to figure out why downloads are
+    failing. You don't want this normally
+    """
+
+    HTTPConnection.debuglevel = 1
+    LOGGER.setLevel(logging.DEBUG)
+    requests_log = logging.getLogger("requests.packages.urllib3")
+    requests_log.setLevel(logging.DEBUG)
+    requests_log.propagate = True
 
 
 def remove_leading_zeros(num: str) -> str:
@@ -75,6 +95,8 @@ def get_manga_details(name):
     chapter_details_pattern = re.compile("vm.CHAPTERS = (.*);")
     chapter_details_str = chapter_details_pattern.search(content).groups()[0]
     chapter_details_list = json.loads(chapter_details_str)
+    logging.getLogger().debug("First page chapter details: %s",
+                              pprint.pformat(chapter_details_list))
 
     chapter_details_dict = {}
     for chapter_detail in chapter_details_list:
@@ -194,12 +216,17 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l", "--limit", help="Limit maximum simultaneous chapter downloads", type=int
     )
+    parser.add_argument("-v", "--verbose", help="Add debugging output",
+                            action="store_true")
 
     try:
         args = parser.parse_args()
     except SystemExit:
         print(help)
         sys.exit()
+
+    if args.verbose:
+        add_verbosity()
 
     name = "-".join(sys.argv[1].title().split())
 
