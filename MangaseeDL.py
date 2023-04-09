@@ -1,5 +1,5 @@
-import asyncio
 import argparse
+import asyncio
 import json
 import os
 import re
@@ -7,13 +7,13 @@ import sys
 from typing import Iterable
 
 import aiofiles
-import aiohttp
 import requests
+import requests_html
 
 MANGASEE123HOST = "https://mangasee123.com"
 
 
-def remove_leading_zeros(num: str) -> str:
+def remove_leading_zeros(num) -> str:
     """
     Remove leading zeros from a string.
     """
@@ -28,7 +28,7 @@ def remove_leading_zeros(num: str) -> str:
     return num[first_non_zero_index:]
 
 
-def add_leading_zeros(num: str, total_len: int) -> str:
+def add_leading_zeros(num, total_len) -> str:
     """
     Add leading zeros to a string to reach the specified length.
     """
@@ -41,18 +41,18 @@ def add_leading_zeros(num: str, total_len: int) -> str:
     return num
 
 
-def get_chapter_first_page_url(manga_name: str, chapter: str, page: str):
+def get_chapter_first_page_url(manga_name, chapter, page) -> str:
     """
     Get mangasee123 reader url for a specific manga/chapter/page
 
-    Boch chapter and page should be without leading zeros
+    Both chapter and page should be without leading zeros
     """
     return (
         f"{MANGASEE123HOST}/read-online/{manga_name}-chapter-{chapter}-page-{page}.html"
     )
 
 
-def get_page_image_url(host, name, chapter, page):
+def get_page_image_url(host, name, chapter, page) -> str:
     """
     Get hosted image url for a specific manga page
     """
@@ -67,9 +67,10 @@ def get_manga_details(name):
     Get details for a manga from Mangasee123.
     Details include available chapters and number of pages in each chapter
     """
-    url = get_chapter_first_page_url(name, "1", "1")
+    url = get_chapter_first_page_url(name, 1, 1)
 
-    resp = requests.get(url)
+    session = requests_html.HTMLSession()
+    resp = session.get(url)
     content = resp.content.decode("utf-8")
 
     chapter_details_pattern = re.compile("vm.CHAPTERS = (.*);")
@@ -85,9 +86,7 @@ def get_manga_details(name):
     return chapter_details_dict
 
 
-async def get_chapter_download_and_save_data(
-    session, name: str, chapter: int, pages: int
-) -> list:
+async def get_chapter_download_and_save_data(session, name, chapter, pages) -> list:
     """
     Specify the url and save path for each page of a chapter
     """
@@ -96,7 +95,7 @@ async def get_chapter_download_and_save_data(
     url = get_chapter_first_page_url(name, chapter, 1)
 
     resp = await session.request(method="GET", url=url)
-    content = await resp.text()
+    content = resp.content.decode("utf-8")
     host_pattern = re.compile('vm.CurPathName = "(.*)";')
     host = host_pattern.search(content).groups()[0]
 
@@ -111,7 +110,7 @@ async def get_chapter_download_and_save_data(
 
 
 async def download_and_save_chapter(
-    session: aiohttp.ClientSession, name, chapter, pages
+    session: requests_html.AsyncHTMLSession, name, chapter, pages
 ):
     """
     Asynchronously download and save a page (skip if file exists)
@@ -130,13 +129,13 @@ async def download_and_save_chapter(
             resp = await session.request(method="GET", url=download_url)
 
             async with aiofiles.open(save_path, "wb") as f:
-                await f.write(await resp.read())
+                await f.write(resp.content)
         print(f"Finished downloading chapter {chapter}...")
     except asyncio.TimeoutError:
         print(f"Timeout in downloading chapter {chapter}!")
 
 
-async def download_chapters(name: str, chapter_details: Iterable):
+async def download_chapters(name, chapter_details: Iterable):
     """
     Main couroutine for downloading chapters
     """
@@ -146,24 +145,24 @@ async def download_chapters(name: str, chapter_details: Iterable):
     if not os.path.exists(name):
         os.mkdir(name)
 
-    async with aiohttp.ClientSession() as session:
-        print("Fetching requested chapter details...")
+    session = requests_html.AsyncHTMLSession()
+    print("Fetching requested chapter details...")
 
-        coroutines = []
-        for ch_detail in chapter_details:
-            chapter = ch_detail["Chapter"][1:-1]
-            pages = int(ch_detail["Page"])
+    coroutines = []
+    for ch_detail in chapter_details:
+        chapter = ch_detail["Chapter"][1:-1]
+        pages = int(ch_detail["Page"])
 
-            if not os.path.isdir(os.path.join(name, chapter)):
-                os.mkdir(os.path.join(name, chapter))
+        if not os.path.isdir(os.path.join(name, chapter)):
+            os.mkdir(os.path.join(name, chapter))
 
-            coroutines.append(
-                download_and_save_chapter(session, name, chapter, pages),
-            )
+        coroutines.append(
+            download_and_save_chapter(session, name, chapter, pages),
+        )
 
-        print(f"Downloading requested chapters...")
-        await asyncio.gather(*coroutines)
-        print("Download completed!")
+    print(f"Downloading requested chapters...")
+    await asyncio.gather(*coroutines)
+    print("Download completed!")
 
 
 if __name__ == "__main__":
