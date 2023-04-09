@@ -219,22 +219,16 @@ if __name__ == "__main__":
     )
 
     try:
-        if not args.chapter_start:
-            target_chapters = chapters_dict.values()
-        elif args.chapter_start and not args.chapter_end:
-            ch = args.chapter_start
-            target_chapters = [chapters_dict[ch]]
-        else:
-            ch_start = args.chapter_start
-            ch_end = args.chapter_end
+        ch_start = args.chapter_start or min_chapter
+        ch_end = args.chapter_end or max_chapter
 
-            target_chapters = []
-            for ch in range(ch_start, ch_end + 1):
-                chapter = chapters_dict.get(ch)
-                if not chapter:
-                    print(f"Chapter {ch} is not available, skipping...")
-                else:
-                    target_chapters.append(chapter)
+        target_chapters = []
+        for ch in range(ch_start, ch_end + 1):
+            chapter = chapters_dict.get(ch)
+            if not chapter:
+                print(f"Chapter {ch} is not available, skipping...")
+            else:
+                target_chapters.append(chapter)
 
     except ValueError:
         print("Could not parse input!")
