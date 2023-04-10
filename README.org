@@ -43,9 +43,9 @@ As of the time of writing this script, mangasee123 serves mangas in the followin
 
 https://mangasee123.com/read-online/MANGANAME-chapter-CHAPTERNO-page-PAGENO.html
 
-Take One Piece for example. If you want to read the panel where Ace dies (Oops! Sorry!), you'll go to:
+For example, One Piece chapter 1 page 51 can be read on:
 
-https://mangasee123.com/read-online/One-Piece-chapter-574-page-21.html
+https://mangasee123.com/read-online/One-Piece-chapter-1-page-51.html
 
 If we inspect this url's source, there's two important variables in the JS codes:
 
