@@ -2,3 +2,5 @@ aiofiles
 aiohttp
 requests
 requests-html
+types-aiofiles
+types-requests
