@@ -94,7 +94,7 @@ def get_manga_details(name):
     chapter_details_pattern = re.compile("vm.CHAPTERS = (.*);")
     chapter_details_search = chapter_details_pattern.search(content)
     if chapter_details_search:
-        chapter_details_str = chapter_details_pattern.search(content).groups()[0]
+        chapter_details_str = chapter_details_search.groups()[0]
     else:
         LOGGER.warning("No match for vm.CHAPTERS found")
         LOGGER.debug("Contents: %s", content)
@@ -129,7 +129,7 @@ async def get_chapter_download_and_save_data(session, name, chapter, pages) -> l
     host_pattern = re.compile('vm.CurPathName = "(.*)";')
     host_search = host_pattern.search(content)
     if host_search:
-        host = host_pattern.search(content).groups()[0]
+        host = host_search.groups()[0]
     else:
         LOGGER.warning("No match for vm.CurPathName found")
         LOGGER.debug("Contents: %s", content)
