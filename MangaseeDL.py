@@ -1,7 +1,10 @@
 import argparse
 import asyncio
+from http.client import HTTPConnection
 import json
+import logging
 import os
+import pprint
 import re
 import sys
 from typing import Iterable
@@ -12,6 +15,20 @@ import requests_html
 
 MANGASEE123HOST = "https://mangasee123.com"
 
+logging.basicConfig()
+LOGGER = logging.getLogger()
+
+def add_verbosity() -> None:
+    """
+    Turn on quite a bit of verbose logging to figure out why downloads are
+    failing. You don't want this normally
+    """
+
+    HTTPConnection.debuglevel = 1
+    LOGGER.setLevel(logging.DEBUG)
+    requests_log = logging.getLogger("requests.packages.urllib3")
+    requests_log.setLevel(logging.DEBUG)
+    requests_log.propagate = True
 
 def remove_leading_zeros(num) -> str:
     """
@@ -74,8 +91,17 @@ def get_manga_details(name):
     content = resp.content.decode("utf-8")
 
     chapter_details_pattern = re.compile("vm.CHAPTERS = (.*);")
-    chapter_details_str = chapter_details_pattern.search(content).groups()[0]
+    chapter_details_search = chapter_details_pattern.search(content)
+    if chapter_details_search:
+        chapter_details_str = chapter_details_pattern.search(content).groups()[0]
+    else:
+        LOGGER.warning("No match for vm.CHAPTERS found")
+        LOGGER.debug("Contents: %s", content)
+        raise SystemExit("no match for vm.CHAPTERS found, bailing")
+
     chapter_details_list = json.loads(chapter_details_str)
+    logging.getLogger().debug("First page chapter details: %s",
+                              pprint.pformat(chapter_details_list))
 
     chapter_details_dict = {}
     for chapter_detail in chapter_details_list:
@@ -92,12 +118,21 @@ async def get_chapter_download_and_save_data(session, name, chapter, pages) -> l
     """
     data = []
 
+    LOGGER.debug("get_chapter_download_and_save_data(%s, %i, %i)", name,
+                 chapter, pages)
+
     url = get_chapter_first_page_url(name, chapter, 1)
 
     resp = await session.request(method="GET", url=url)
     content = resp.content.decode("utf-8")
     host_pattern = re.compile('vm.CurPathName = "(.*)";')
-    host = host_pattern.search(content).groups()[0]
+    host_search = host_pattern.search(content)
+    if host_search:
+        host = host_pattern.search(content).groups()[0]
+    else:
+        LOGGER.warning("No match for vm.CurPathName found")
+        LOGGER.debug("Contents: %s", content)
+        raise SystemExit("no match for vm.CurPathName found, bailing")
 
     for page in range(1, int(pages) + 1):
         page = add_leading_zeros(page, 3)
@@ -193,6 +228,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l", "--limit", help="Limit maximum simultaneous chapter downloads", type=int
     )
+    parser.add_argument(
+        "-v", "--verbose", help="Add debugging output",
+        action="store_true")
 
     try:
         args = parser.parse_args()
@@ -200,7 +238,10 @@ if __name__ == "__main__":
         print(help)
         sys.exit()
 
-    name = "-".join(sys.argv[1].title().split())
+    if args.verbose:
+        add_verbosity()
+
+    name = "-".join(args.manga_name.title().split())
 
     try:
         chapters_dict = get_manga_details(name)
