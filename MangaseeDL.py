@@ -126,7 +126,9 @@ async def get_chapter_download_and_save_data(
 
     for page in range(1, int(pages) + 1):
         download_url = get_page_image_url(host, name, chapter, page)
-        save_path = os.path.join(str(name), str(chapter), f"{page}.png")
+        save_path = os.path.join(name,
+                                 add_leading_zeros(chapter, 4),
+                                 f"{add_leading_zeros(page, 3)}.png")
 
         data.append({"download_url": download_url, "save_path": save_path})
 
