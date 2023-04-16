@@ -251,7 +251,7 @@ if __name__ == "__main__":
         LOGGER.warning("Could not get info for %s from http://mangasee123.com", name)
         sys.exit()
     except requests.exceptions.ConnectionError:
-        LOGGER.ERROR("Could not connect to http://mangasee123.com")
+        LOGGER.error("Could not connect to http://mangasee123.com")
         sys.exit()
 
     min_chapter = min(chapters_dict.keys())
