@@ -220,7 +220,7 @@ if __name__ == "__main__":
 
     try:
         ch_start = args.chapter_start or min_chapter
-        ch_end = args.chapter_end or max_chapter
+        ch_end = args.chapter_end or args.chapter_start or max_chapter
 
         target_chapters = []
         for ch in range(ch_start, ch_end + 1):
