@@ -17,6 +17,7 @@ MANGASEE123HOST = "https://mangasee123.com"
 
 logging.basicConfig()
 LOGGER = logging.getLogger()
+LOGGER.setLevel(logging.INFO)
 
 def add_verbosity() -> None:
     """
@@ -151,7 +152,7 @@ async def download_and_save_chapter(
     Asynchronously download and save a page (skip if file exists)
     """
     try:
-        print(f"Started downloading chapter {chapter}...")
+        LOGGER.info("Started downloading chapter %s...", chapter)
         data = await get_chapter_download_and_save_data(session, name, chapter, pages)
 
         for d in data:
@@ -165,9 +166,9 @@ async def download_and_save_chapter(
 
             async with aiofiles.open(save_path, "wb") as f:
                 await f.write(resp.content)
-        print(f"Finished downloading chapter {chapter}...")
+        LOGGER.info("Finished downloading chapter %s...", chapter)
     except asyncio.TimeoutError:
-        print(f"Timeout in downloading chapter {chapter}!")
+        LOGGER.warning("Timeout in downloading chapter %s!", chapter)
 
 
 async def download_chapters(name, chapter_details: Iterable):
@@ -181,7 +182,7 @@ async def download_chapters(name, chapter_details: Iterable):
         os.mkdir(name)
 
     session = requests_html.AsyncHTMLSession()
-    print("Fetching requested chapter details...")
+    LOGGER.info("Fetching requested chapter details...")
 
     coroutines = []
     for ch_detail in chapter_details:
@@ -195,9 +196,9 @@ async def download_chapters(name, chapter_details: Iterable):
             download_and_save_chapter(session, name, chapter, pages),
         )
 
-    print(f"Downloading requested chapters...")
+    LOGGER.info("Downloading requested chapters...")
     await asyncio.gather(*coroutines)
-    print("Download completed!")
+    LOGGER.info("Download completed!")
 
 
 if __name__ == "__main__":
@@ -235,7 +236,7 @@ if __name__ == "__main__":
     try:
         args = parser.parse_args()
     except SystemExit:
-        print(help)
+        LOGGER.info(help)
         sys.exit()
 
     if args.verbose:
@@ -245,12 +246,12 @@ if __name__ == "__main__":
 
     try:
         chapters_dict = get_manga_details(name)
-        print(f"Fetched details for {name}...")
+        LOGGER.info("Fetched details for %s...", name)
     except AttributeError:
-        print(f"Could not get info for {name} from http://mangasee123.com")
+        LOGGER.warning("Could not get info for %s from http://mangasee123.com", name)
         sys.exit()
     except requests.exceptions.ConnectionError:
-        print(f"Could not connect to http://mangasee123.com")
+        LOGGER.ERROR("Could not connect to http://mangasee123.com")
         sys.exit()
 
     min_chapter = min(chapters_dict.keys())
@@ -267,18 +268,18 @@ if __name__ == "__main__":
         for ch in range(ch_start, ch_end + 1):
             chapter = chapters_dict.get(ch)
             if not chapter:
-                print(f"Chapter {ch} is not available, skipping...")
+                LOGGER.info("Chapter %s is not available, skipping...", ch)
             else:
                 target_chapters.append(chapter)
 
     except ValueError:
-        print("Could not parse input!")
-        print(help)
+        LOGGER.error("Could not parse input!")
+        LOGGER.info(help)
         sys.exit()
     except KeyError:
-        print("Could not find specified chapter(s)!")
-        print(f"Available chapter: {min_chapter}-{max_chapter}")
-        print(f"Not available chapters: {non_available_chapters}")
+        LOGGER.error("Could not find specified chapter(s)!")
+        LOGGER.error("Available chapter: %s-%s", min_chapter, max_chapter)
+        LOGGER.error("Not available chapters: %s", non_available_chapters)
         sys.exit()
 
     try:
@@ -287,7 +288,8 @@ if __name__ == "__main__":
         for i in range(0, len(target_chapters), limit):
             asyncio.run(download_chapters(name, target_chapters[i : i + limit]))
     except FileExistsError:
-        print(
-            f"Could not create directory {name}, It appears that a file with that name exists!"
+        LOGGER.error(
+            "Could not create directory %s, It appears that a file with that name exists!",
+            name
         )
         sys.exit()
